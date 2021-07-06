@@ -1,0 +1,52 @@
+version: '3.8'
+
+networks:
+  wilson_network:
+    external: true
+
+services:
+  db:
+    container_name: db
+    image: postgres:12
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dbtest
+    ports:
+      - 5432:5432
+    networks:
+      - wilson_network
+
+  php-fpm:
+    container_name: php-fpm
+    build:
+      context: ./php-fpm
+    networks:
+      - wilson_network
+    depends_on:
+      - db
+    environment:
+      - APP_ENV=dev
+      - APP_SECRET=74607b5352a2d7fe255b8719051aace8
+      - DATABASE_URL=postgresql://postgres:password@db/dbtest
+    volumes:
+      - ./../wilson/:/var/www
+
+  nginx:
+    container_name: nginx
+    build:
+      context: ./nginx
+    networks:
+      - wilson_network
+    volumes:
+      - ./../wilson/:/var/www
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites/:/etc/nginx/sites-available
+      - ./nginx/conf.d/:/etc/nginx/conf.d
+      - ./logs:/var/log
+      - ./logs/nginx/:/var/log/nginx
+    depends_on:
+      - php-fpm
+    ports:
+      - "80:80"
+      - "443:443"
